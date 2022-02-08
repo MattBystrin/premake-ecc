@@ -5,82 +5,75 @@
 	p.modules.ecc = {}
 	local m = p.modules.ecc
 
-	newoption {
-		trigger = "config",
-		value = "CFG",
-		description = "Select config for export compile_commands.json"
-	}
+	m._VERSION = "1.0.0-alpha"
 
-	newaction {
-		trigger         = "ecc",
-		shortname       = "Export compile commands",
-		description     = "Export compile_commands.json for language server",
-		toolset         = "gcc",
-
-		valid_kinds     = { "ConsoleApp", "WindowedApp", "StaticLib", "SharedLib" },
-		valid_languages = { "C", "C++" },
-		valid_tools     = {
-			cc     = { "clang", "gcc" }
-		},
-
-		--onWorkspace = function(wks)
-		--	p.escaper(p.make.esc)
-		--	p.generate(wks, p.make.getmakefilename(wks, false), p.make.generate_workspace)
-		--end,
-
-		-- Module iterates through the projects and adds data to
-		-- modules' global talbe, which is after encoded to a json
-
-		onProject = function(prj)
-			--p.escaper(p.make.esc)
-			--local makefile = p.make.getmakefilename(prj, true)
-			if project.isc(prj) or project.iscpp(prj) then
-				--p.generate(prj, makefile, p.make.cpp.generate)
-				print(prj.name)
-				local config = _OPTIONS.config
-				local cfg = {}
-				if config then
-					cfg = prj.configs[config]
-					if not cfg then
-						cfg = m.defaultconfig(prj)
-						print("Not valid config. Using default one")
-					end
-				else
-					cfg = m.defaultconfig(prj)
-				end
-
-				m.getArguments(cfg)
-
-				--local objdir = project.getrelative(cfg.project, cfg.objdir)
-				--local includes = toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs)
-				-- print(includes)
+	function m.generateFile()
+		p.push("[")
+		for wks in p.global.eachWorkspace() do
+			for prj in p.workspace.eachproject(wks) do
+				m.onProject(prj)
 			end
-		end,
-	}
+		end
+		p.pop("]")
+	end
 
-	function m.getArguments(cfg)
+	function m.onProject(prj)
+		if project.isc(prj) or project.iscpp(prj) then
+			local cfg = m.getConfig(prj)
+			local args = m.getArguments(prj, cfg)
+			local files = table.shallowcopy(prj._.files)
+			table.foreachi(files, function(node)
+				local output = cfg.objdir .. "/" ..  node.objname .. ".o"
+				local obj = path.getrelative(prj.location, output)
+				p.push("{")
+				p.push("\"arguments\": [")
+				m.writeArgs(args, obj, node.relpath)
+				p.pop("],")
+				p.w("\"directory\": \"%s\"", prj.location)
+				p.w("\"file\": \"%s\"", node.abspath)
+				p.w("\"output\": \"%s\"", output)
+				p.pop("},")
+			end)
+		end
+	end
+
+	function m.writeArgs(args, obj, src)
+		table.foreachi(args, function(arg)
+			p.w("\"%s\",", arg)
+		end)
+		p.w("\"-c\",")
+		p.w("\"-o\",")
+		p.w("\"%s\",", obj)
+		p.w("\"%s\"", src)
+	end
+
+	function m.getConfig(prj)
+		local ocfg = _OPTIONS.config
+		local cfg = {}
+		if ocfg and prj.configs[ocfg] then
+			cfg = prj.configs[ocfg]
+		else
+			cfg = m.defaultconfig(prj)
+		end
+		return cfg
+	end
+
+	function m.getArguments(prj, cfg)
 		local toolset = m.getToolSet(cfg)
-		local toolname = iif(cfg.prefix, toolset.gettoolname(cfg, "cxx"), toolset.tools["cxx"])
-		print(toolname)
-		local cxxflags
-		local defines
-		local includes
-		local forcesincludes
-	end
-
-	function m.getDirectory(cfg)
-		print(cfg)
-	end
-
-	function m.getFile(cfg)
-		print(cfg)
-	end
-
-	function m.getOutput(cfg)
-		print(cfg)
+		local args = {}
+		local tool = iif(project.iscpp(prj), "cxx", "cc")
+		local toolname = iif(cfg.prefix, toolset.gettoolname(cfg, tool), toolset.tools[tool])
+		args = table.join(args, toolname)
+		args = table.join(args, toolset.getcppflags(cfg))
+		args = table.join(args, toolset.getdefines(cfg.defines))
+		args = table.join(args, toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs))
+		args = table.join(args, toolset.getcflags(cfg))
+		args = table.join(args, cfg.buildoptions)
+		return args
 	end
 
 	-- Copied from gmake2 module
+	-- Return default toolset of given config or  system default toolset
 	function m.getToolSet(cfg)
 		local default = iif(cfg.system == p.MACOSX, "clang", "gcc")
 		local toolset = p.tools[_OPTIONS.cc or cfg.toolset or default]
