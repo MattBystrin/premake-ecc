@@ -6,7 +6,7 @@ This is an alternative to [tarruda's](https://github.com/tarruda/premake-export-
 Tested with clangd-13.
 
 ## Requirements
-Preamke 5.0.0 or later.
+Premake 5.0.0 or later.
 
 ## How to use
 First of all you need to embedded it your premake build.  To get it done follow the [manual](https://premake.github.io/docs/Embedding-Modules/)
