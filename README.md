@@ -12,12 +12,12 @@ Premake 5.0.0 or later.
 First of all you need to embedded it your premake build.  To get it done follow the [manual](https://premake.github.io/docs/Embedding-Modules/)
 After you simply can call:
 ```
-premake ecc
+premake5 ecc
 ```
 Moldule will generate **one** compile_commands.json file near your main premake script.
 During generation in will use the default config (the first one you have specified in script). If you want to select specific config just pass it's name with command line option:
 ```
-premake --config=release ecc
+premake5 --config=release ecc
 ```
 Careful! `config` option case sensitive! If there is no config passed via command line, module will choose the default one. 
 
