@@ -15,7 +15,7 @@ After you simply can call:
 premake5 ecc
 ```
 Moldule will generate **one** compile_commands.json file near your main premake script.
-During generation in will use the default config (the first one you have specified in script). If you want to select specific config just pass it's name with command line option:
+During generation it will use the default config (the first one you have specified in script). If you want to select specific config just pass it's name with command line option:
 ```
 premake5 --config=release ecc
 ```
