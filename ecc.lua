@@ -65,6 +65,7 @@
 		local toolname = iif(cfg.prefix, toolset.gettoolname(cfg, tool), toolset.tools[tool])
 		args = table.join(args, toolname)
 		args = table.join(args, toolset.getcppflags(cfg))
+		args = table.join(args, toolset.getcxxflags(cfg))
 		args = table.join(args, toolset.getdefines(cfg.defines))
 		args = table.join(args, toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs))
 		args = table.join(args, toolset.getcflags(cfg))
