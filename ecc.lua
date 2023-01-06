@@ -32,11 +32,7 @@
 				p.w("\"directory\": \"%s\",", prj.location)
 				p.w("\"file\": \"%s\",", node.abspath)
 				p.w("\"output\": \"%s\"", output)
-				if i == #files then
-					p.pop("}")
-				else
-					p.pop("},")
-				end
+				p.pop("},")
 			end
 		end
 	end
