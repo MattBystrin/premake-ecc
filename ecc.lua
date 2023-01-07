@@ -5,7 +5,7 @@
 	p.modules.ecc = {}
 	local m = p.modules.ecc
 
-	m._VERSION = "1.0.0-alpha"
+	m._VERSION = "1.0.1-alpha"
 
 	function m.generateFile()
 		p.push("[")
@@ -22,7 +22,7 @@
 			local cfg = m.getConfig(prj)
 			local args = m.getArguments(prj, cfg)
 			local files = table.shallowcopy(prj._.files)
-			table.foreachi(files, function(node)
+			for i,node in ipairs(files) do
 				local output = cfg.objdir .. "/" ..  node.objname .. ".o"
 				local obj = path.getrelative(prj.location, output)
 				p.push("{")
@@ -33,14 +33,14 @@
 				p.w("\"file\": \"%s\",", node.abspath)
 				p.w("\"output\": \"%s\"", output)
 				p.pop("},")
-			end)
+			end
 		end
 	end
 
 	function m.writeArgs(args, obj, src)
-		table.foreachi(args, function(arg)
+		for _,arg in ipairs(args) do
 			p.w("\"%s\",", arg)
-		end)
+		end
 		p.w("\"-c\",")
 		p.w("\"-o\",")
 		p.w("\"%s\",", obj)
@@ -64,10 +64,15 @@
 		local tool = iif(project.iscpp(prj), "cxx", "cc")
 		local toolname = iif(cfg.prefix, toolset.gettoolname(cfg, tool), toolset.tools[tool])
 		args = table.join(args, toolname)
-		args = table.join(args, toolset.getcppflags(cfg))
+		args = table.join(args, toolset.getcppflags(cfg)) -- Preprocessor
 		args = table.join(args, toolset.getdefines(cfg.defines))
+		args = table.join(args, toolset.getundefines(cfg.undefines))
 		args = table.join(args, toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs))
-		args = table.join(args, toolset.getcflags(cfg))
+		if project.iscpp(prj) then
+			args = table.join(args, toolset.getcxxflags(cfg))
+		else
+			args = table.join(args, toolset.getcflags(cfg))
+		end
 		args = table.join(args, cfg.buildoptions)
 		return args
 	end
