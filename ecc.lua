@@ -1,3 +1,8 @@
+	
+	-- Include module if it is not embedded
+	if premake.modules.ecc == nil then
+		include ( "_preload.lua" )
+	end
 
 	local p = premake
 	local project = p.project
