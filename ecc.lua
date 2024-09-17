@@ -44,7 +44,10 @@
 
 	function m.writeArgs(args, obj, src)
 		for _,arg in ipairs(args) do
-			p.w("\"%s\",", arg)
+			-- Defines like the following will break JSON format, quotes need to be escaped
+			-- -DEXPORT_API=__attribute__((visibility("default")))
+			local escaped = arg:gsub("\"", "\\\"")
+			p.w("\"%s\",", escaped)
 		end
 		p.w("\"-c\",")
 		p.w("\"-o\",")
