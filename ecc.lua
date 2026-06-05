@@ -57,13 +57,21 @@
 
 	function m.getConfig(prj)
 		local ocfg = _OPTIONS.config
-		local cfg = {}
-		if ocfg and prj.configs[ocfg] then
-			cfg = prj.configs[ocfg]
-		else
-			cfg = m.defaultconfig(prj)
+		if ocfg then
+			-- prj.configs is keyed by "<buildcfg>|<platform>", not bare buildcfg.
+			-- Walk eachconfig and prefer an entry on the workspace defaultplatform.
+			local match
+			for cfg in project.eachconfig(prj) do
+				if cfg.buildcfg == ocfg then
+					if cfg.platform == prj.workspace.defaultplatform then
+						return cfg
+					end
+					match = match or cfg
+				end
+			end
+			if match then return match end
 		end
-		return cfg
+		return m.defaultconfig(prj)
 	end
 
 	function m.getArguments(prj, cfg)
