@@ -38,6 +38,18 @@ premake5 --config=release ecc
 Careful! `config` option case sensitive! If there is no config passed via
 command line, module will choose the default one. 
 
+### Custom output directory
+
+By default the file is written next to your `premake5.lua`. Override
+the destination with the `--ecc-output=PATH` option:
+
+```
+premake5 --ecc-output=/path/to/output ecc
+```
+
+This is useful when `premake5.lua` does not live at the location where
+the language server expects to find `compile_commands.json`.
+
 Note: if you want to embed this module into your premake build follow
 the [manual](https://premake.github.io/docs/Embedding-Modules/)
 

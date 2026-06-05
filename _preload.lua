@@ -7,6 +7,12 @@
 		description = "Select config for export compile_commands.json"
 	}
 
+	newoption {
+		trigger = "ecc-output",
+		value = "PATH",
+		description = "Directory to write compile_commands.json (default: _MAIN_SCRIPT_DIR)"
+	}
+
 	newaction {
 		trigger         = "ecc",
 		shortname       = "Export compile commands",
@@ -24,8 +30,7 @@
 		end,
 
 		execute = function()
-			local dir = {}
-			dir.location = _MAIN_SCRIPT_DIR
+			local dir = { location = _OPTIONS["ecc-output"] or _MAIN_SCRIPT_DIR }
 			p.generate(dir, "compile_commands.json", p.modules.ecc.generateFile)
 		end
 	}
