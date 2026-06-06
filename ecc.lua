@@ -27,14 +27,17 @@
 			local cfg = m.getConfig(prj)
 			local args = m.getArguments(prj, cfg)
 			local files = table.shallowcopy(prj._.files)
+			-- "directory" must be a path that exists on disk so clangd can chdir
+			-- there. prj.location is often a virtual workspace path that hasn't
+			-- been created on disk; fall back to where we're writing the JSON.
+			local outdir = path.getabsolute(_OPTIONS["ecc-output"] or _MAIN_SCRIPT_DIR)
 			for i,node in ipairs(files) do
-				local output = cfg.objdir .. "/" ..  node.objname .. ".o"
-				local obj = path.getrelative(prj.location, output)
+				local output = path.getabsolute(cfg.objdir .. "/" ..  node.objname .. ".o")
 				p.push("{")
 				p.push("\"arguments\": [")
-				m.writeArgs(args, obj, node.relpath)
+				m.writeArgs(args, prj.location, output, node.abspath)
 				p.pop("],")
-				p.w("\"directory\": \"%s\",", prj.location)
+				p.w("\"directory\": \"%s\",", outdir)
 				p.w("\"file\": \"%s\",", node.abspath)
 				p.w("\"output\": \"%s\"", output)
 				p.pop("},")
@@ -42,17 +45,58 @@
 		end
 	end
 
-	function m.writeArgs(args, obj, src)
+	-- Flags premake's toolsets emit as "<flag> <path>" in a single string. In a
+	-- Makefile that's fine — the shell re-tokenizes — but compile_commands.json
+	-- treats each array entry as one verbatim argv slot, so clangd otherwise looks
+	-- up a path that begins with a literal space. Split these into two tokens.
+	local two_token_flags = {
+		["-isystem"] = true,
+		["-iquote"] = true,
+		["-iframework"] = true,
+		["-isysroot"] = true,
+		["-include"] = true,
+		["-imacros"] = true,
+		["-idirafter"] = true,
+	}
+
+	local function jsonEscape(s)
+		-- Escape backslashes first so existing escapes (e.g. -DVERSION=\"x.y.z\")
+		-- aren't double-mangled when we then escape the embedded quotes.
+		return s:gsub("\\", "\\\\"):gsub("\"", "\\\"")
+	end
+
+	-- Resolve a path that premake authored relative to `base` to an absolute
+	-- path so clangd doesn't need a particular CWD to find it.
+	local function absPath(base, rel)
+		if path.isabsolute(rel) then
+			return rel
+		end
+		return path.getabsolute(path.join(base, rel))
+	end
+
+	function m.writeArgs(args, base, obj, src)
 		for _,arg in ipairs(args) do
 			-- Defines like the following will break JSON format, quotes need to be escaped
 			-- -DEXPORT_API=__attribute__((visibility("default")))
-			local escaped = arg:gsub("\"", "\\\"")
-			p.w("\"%s\",", escaped)
+			local space_idx = arg:find(" ", 1, true)
+			local first = space_idx and arg:sub(1, space_idx - 1) or nil
+			if first and two_token_flags[first] then
+				local rest = arg:sub(space_idx + 1)
+				if #rest >= 2 and rest:sub(1, 1) == "\"" and rest:sub(-1) == "\"" then
+					rest = rest:sub(2, -2)
+				end
+				p.w("\"%s\",", first)
+				p.w("\"%s\",", jsonEscape(absPath(base, rest)))
+			elseif arg:sub(1, 2) == "-I" and #arg > 2 then
+				p.w("\"-I%s\",", jsonEscape(absPath(base, arg:sub(3))))
+			else
+				p.w("\"%s\",", jsonEscape(arg))
+			end
 		end
 		p.w("\"-c\",")
 		p.w("\"-o\",")
 		p.w("\"%s\",", obj)
-		p.w("\"%s\"", src)
+		p.w("\"%s\"", jsonEscape(src))
 	end
 
 	function m.getConfig(prj)
